@@ -67,7 +67,29 @@ def signup():
     token = generate_jwt_token(email_id)
     return jsonify({'token': token}), 200
 
+@app.route("/signin", methods=['POST'])
+def signin():
+    print(0)
+    email_id = request.json.get('email_id')
+    password = request.json.get('password')
+    user = Users.query.filter_by(email_id=email_id).first()
 
+    # If the user exists, compare the password
+    if user:
+        if user.password == password:
+            print('1')
+            token = generate_jwt_token(email_id)
+            
+            return jsonify({"message": "Success","token":token}), 200
+        else:
+            print(2)
+            # Return failure if the password does not match
+            return jsonify({"message": "Failure"}), 401
+    else:
+        # Return failure if the user does not exist
+        print(3)
+        return jsonify({"message": "Failure"}), 401
+     
 @app.route('/')
 # ‘/’ URL is bound with hello_world() function.
 def hello_world():
