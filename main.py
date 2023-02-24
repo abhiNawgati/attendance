@@ -2,16 +2,19 @@
 #provode jwt token to flask app
 #database queries 
 # psql -h localhost postgres -U postgres
+from sqlalchemy import text
 import datetime
 from flask import Flask,request,jsonify
 import jwt
 
 from flask_sqlalchemy import SQLAlchemy
 
+
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:postgres@localhost/postgres'
 app.config['SECRET_KEY'] = 'secret_key'
 db = SQLAlchemy(app)
+
 
 
 class Users(db.Model):
@@ -23,6 +26,7 @@ class Users(db.Model):
     def __repr__(self):
         return '<User %r>' % self.name
     
+   
 
 @app.route('/user', methods=['POST'])
 def add_user():
@@ -99,6 +103,59 @@ def hello_world():
 def page_not_found(e):
     return "404 not found error"
 
+@app.route('/createTable')
+def createTable():
+    req_data = request.get_json()
+    table_name = req_data['table_name']
+    roll_numbers = req_data['roll_numbers']
+    print(roll_numbers)
+
+    class Student(db.Model):
+        __tablename__ = table_name
+        id = db.Column(db.BigInteger, primary_key=True)
+        roll_number = db.Column(db.String(255), nullable=False)
+
+    db.create_all()
+
+    
+
+
+    for rn in roll_numbers:
+        student = Student(roll_number=rn)
+        print(student)
+        db.session.add(student)
+
+    db.session.commit()    
+
+    
+
+    return 'Table created successfully!'
+     
+@app.route('/attendance', methods=['POST'])
+def mark_attendance():
+    
+    class Students(db.Model):
+        
+        id = db.Column(db.BigInteger, primary_key=True)
+        roll_number = db.Column(db.String(255), nullable=False)
+        __table_args__ = {'extend_existing': True}
+    table_name = request.json.get('table_name')
+    roll_numbers = request.json.get('roll_numbers')
+
+    # create a new column with today's date and default value of 0
+    today = datetime.datetime.now().strftime('attt%Y_%m_%d')
+    table_name = request.json['table_name']
+    if not isinstance(table_name, str):
+        return jsonify({'error': 'Table name should be a string'}), 400
+    sql = text("ALTER TABLE {} ADD COLUMN {} INTEGER DEFAULT 0".format(table_name, today))
+    db.session.execute(sql)
+    db.session.commit()
+
+    sql_statement = text("UPDATE {} SET {}=1 WHERE roll_number IN {}".format(table_name,(today), tuple(roll_numbers)))
+    db.session.execute(sql_statement, {'roll_numbers': roll_numbers})
+    db.session.commit()
+
+    return jsonify({'message': 'Column added and roll numbers marked successfully'}), 200
 # main driver function
 if __name__ == '__main__':
 
@@ -106,4 +163,4 @@ if __name__ == '__main__':
 	# on the local development server.
 	
 	print('db connected');
-	app.run()
+	app.run( port=8080)
